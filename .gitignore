@@ -1,0 +1,33 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+.eslintcache
+
+node_modules
+dist
+dist-ssr
+*.local
+*.local.*
+src/translations/missing/
+
+# Editor directories and files
+.vscode
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+build/
+remote-repo/
+coverage/
+*.swp
+*.swo
+
+.env*
+!.env.example

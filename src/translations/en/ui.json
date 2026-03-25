@@ -1,0 +1,12 @@
+{
+	"date_picker": {
+		"preset_in_3_days": "In 3 days",
+		"preset_in_a_week": "In a week",
+		"preset_last_month": "Last month",
+		"preset_last_week": "Last week",
+		"preset_last_year": "Last year",
+		"preset_today": "Today",
+		"preset_tomorrow": "Tomorrow",
+		"preset_yesterday": "Yesterday"
+	}
+}

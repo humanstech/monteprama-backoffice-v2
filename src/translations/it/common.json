@@ -1,0 +1,5 @@
+{
+	"http_errors": {
+		"default": "Ops! Qualcosa è andato storto."
+	}
+}
