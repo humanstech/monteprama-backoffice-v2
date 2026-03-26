@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -132,7 +133,7 @@ function UsersPage() {
 							<TableHead>Email</TableHead>
 							<TableHead>Admin</TableHead>
 							<TableHead>Attivo</TableHead>
-							<TableHead className='w-[120px]'>Azioni</TableHead>
+							<TableHead className='w-[80px]'>Azioni</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -148,22 +149,24 @@ function UsersPage() {
 									{user.isActive ? 'Si' : 'No'}
 								</TableCell>
 								<TableCell>
-									<div className='flex gap-2'>
+									<div className='flex gap-1'>
 										<Button
+											className='size-8'
 											onClick={() => openEdit(user)}
-											size='sm'
-											variant='outline'
+											size='icon'
+											variant='ghost'
 										>
-											Modifica
+											<Pencil className='size-4' />
 										</Button>
 										<Button
+											className='size-8 text-destructive hover:text-destructive'
 											onClick={() =>
 												setDeletingUser(user)
 											}
-											size='sm'
-											variant='destructive'
+											size='icon'
+											variant='ghost'
 										>
-											Elimina
+											<Trash2 className='size-4' />
 										</Button>
 									</div>
 								</TableCell>

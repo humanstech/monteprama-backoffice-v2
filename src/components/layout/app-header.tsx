@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { Link } from 'react-router'
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -30,8 +31,10 @@ function AppHeader() {
 										{crumb.label}
 									</BreadcrumbPage>
 								) : (
-									<BreadcrumbLink href={crumb.href}>
-										{crumb.label}
+									<BreadcrumbLink asChild>
+										<Link to={crumb.href}>
+											{crumb.label}
+										</Link>
 									</BreadcrumbLink>
 								)}
 							</BreadcrumbItem>
