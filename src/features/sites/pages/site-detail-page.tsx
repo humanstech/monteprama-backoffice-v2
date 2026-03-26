@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TicketsSection } from '@/features/tickets/components/tickets-section'
 import { raise } from '@/helpers/utils'
 import { useSite } from '../hooks'
 import type { SitePoi } from '../types'
@@ -54,10 +55,7 @@ function SiteDetailPage() {
 				</TabsContent>
 
 				<TabsContent className='mt-6' value='tickets'>
-					{/* Will be implemented in Task 12 */}
-					<p className='text-muted-foreground'>
-						Sezione biglietti - in arrivo
-					</p>
+					<TicketsSection siteId={siteId ?? ''} />
 				</TabsContent>
 
 				<TabsContent className='mt-6' value='info'>
