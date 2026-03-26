@@ -1,20 +1,21 @@
 import { z } from 'zod'
 
-export const User = z.object({
+export const UserSchema = z.object({
 	id: z.string(),
-	email: z.string().email(),
-	first_name: z.string(),
-	last_name: z.string(),
-	picture_url: z.string().url().nullable(),
-	phone: z.string().nullable(),
-	code: z.coerce.number().int(),
-	password: z.string()
+	firstName: z.string(),
+	lastName: z.string(),
+	email: z.string().email().nullable(),
+	isActive: z.boolean().default(false),
+	isEditor: z.boolean().default(false),
+	isAdmin: z.boolean().default(false),
+	createdAt: z.string(),
+	updatedAt: z.string()
 })
-export type User = z.infer<typeof User>
+export type User = z.infer<typeof UserSchema>
 
-const AuthState = z.object({
-	user: User.nullable(),
+export const AuthLoginSchema = z.object({
 	accessToken: z.string(),
-	refreshToken: z.string()
+	refreshToken: z.string(),
+	user: UserSchema.nullable()
 })
-export type AuthState = z.infer<typeof AuthState>
+export type AuthLogin = z.infer<typeof AuthLoginSchema>
