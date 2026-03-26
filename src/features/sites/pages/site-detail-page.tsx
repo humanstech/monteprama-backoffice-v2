@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { InfoSitesSection } from '@/features/info-sites/components/info-sites-section'
 import { TicketsSection } from '@/features/tickets/components/tickets-section'
 import { raise } from '@/helpers/utils'
 import { useSite } from '../hooks'
@@ -59,10 +60,7 @@ function SiteDetailPage() {
 				</TabsContent>
 
 				<TabsContent className='mt-6' value='info'>
-					{/* Will be implemented in Task 13 */}
-					<p className='text-muted-foreground'>
-						Sezione info - in arrivo
-					</p>
+					<InfoSitesSection siteId={siteId ?? ''} />
 				</TabsContent>
 			</Tabs>
 		</div>
