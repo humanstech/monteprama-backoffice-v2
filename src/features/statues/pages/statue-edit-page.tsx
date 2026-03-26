@@ -1,4 +1,3 @@
-import { ArrowLeft } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,18 +22,7 @@ function StatueEditPage() {
 
 	return (
 		<div className='space-y-6'>
-			<div className='flex items-center gap-4'>
-				<Button
-					onClick={() => navigate('/statues')}
-					size='icon'
-					variant='ghost'
-				>
-					<ArrowLeft className='size-5' />
-				</Button>
-				<h1 className='font-bold text-2xl'>
-					{statue.name ?? 'Statua'}
-				</h1>
-			</div>
+			<h1 className='font-bold text-2xl'>{statue.name ?? 'Statua'}</h1>
 
 			<div className='grid gap-6 lg:grid-cols-2'>
 				<div className='space-y-4'>

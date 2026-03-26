@@ -1,6 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InfoSitesSection } from '@/features/info-sites/components/info-sites-section'
@@ -11,7 +9,6 @@ import type { SitePoi } from '../types'
 
 function SiteDetailPage() {
 	const { siteId } = useParams()
-	const navigate = useNavigate()
 	const { data: site, isLoading } = useSite(siteId ?? raise('Missing siteId'))
 
 	if (isLoading) {
@@ -28,16 +25,7 @@ function SiteDetailPage() {
 
 	return (
 		<div className='space-y-6'>
-			<div className='flex items-center gap-4'>
-				<Button
-					onClick={() => navigate('/sites')}
-					size='icon'
-					variant='ghost'
-				>
-					<ArrowLeft className='size-5' />
-				</Button>
-				<h1 className='font-bold text-2xl'>{site.name ?? 'Sito'}</h1>
-			</div>
+			<h1 className='font-bold text-2xl'>{site.name ?? 'Sito'}</h1>
 
 			<Tabs defaultValue='general'>
 				<TabsList>

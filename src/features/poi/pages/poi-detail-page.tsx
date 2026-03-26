@@ -1,6 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -111,9 +110,7 @@ function ContentList({
 }
 
 function PoiDetailPage() {
-	const { siteId, poiId } = useParams()
-	const navigate = useNavigate()
-	const sid = siteId ?? raise('Missing siteId')
+	const { poiId } = useParams()
 	const pid = poiId ?? raise('Missing poiId')
 
 	const { data: poiData, isLoading } = usePoiContents(pid)
@@ -143,16 +140,7 @@ function PoiDetailPage() {
 
 	return (
 		<div className='space-y-6'>
-			<div className='flex items-center gap-4'>
-				<Button
-					onClick={() => navigate(`/sites/${sid}`)}
-					size='icon'
-					variant='ghost'
-				>
-					<ArrowLeft className='size-5' />
-				</Button>
-				<h1 className='font-bold text-2xl'>Modifica POI</h1>
-			</div>
+			<h1 className='font-bold text-2xl'>Modifica POI</h1>
 
 			{/* Controls: language selector + draft/online toggle */}
 			<div className='flex flex-wrap items-center gap-4'>

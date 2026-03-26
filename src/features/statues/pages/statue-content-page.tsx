@@ -1,6 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -23,7 +22,6 @@ import { useStatueStore } from '../stores/statue-store'
 
 function StatueContentPage() {
 	const { statueId } = useParams()
-	const navigate = useNavigate()
 	const id = statueId ?? raise('Missing statueId')
 	const { data: statues, isLoading } = useStatues()
 
@@ -53,18 +51,9 @@ function StatueContentPage() {
 
 	return (
 		<div className='space-y-6'>
-			<div className='flex items-center gap-4'>
-				<Button
-					onClick={() => navigate(`/statues/${id}/edit`)}
-					size='icon'
-					variant='ghost'
-				>
-					<ArrowLeft className='size-5' />
-				</Button>
-				<h1 className='font-bold text-2xl'>
-					Contenuti - {statue.name ?? 'Statua'}
-				</h1>
-			</div>
+			<h1 className='font-bold text-2xl'>
+				Contenuti - {statue.name ?? 'Statua'}
+			</h1>
 
 			<div className='flex flex-wrap items-center gap-4'>
 				<Select onValueChange={setLanguage} value={selectedLanguage}>

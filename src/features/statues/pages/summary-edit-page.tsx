@@ -1,6 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -21,7 +19,6 @@ import { useSummaries, useUpdateSummaryContent } from '../hooks'
 import { useStatueStore } from '../stores/statue-store'
 
 function SummaryEditPage() {
-	const navigate = useNavigate()
 	const { data: summary, isLoading } = useSummaries()
 	const updateContent = useUpdateSummaryContent()
 	const {
@@ -46,18 +43,9 @@ function SummaryEditPage() {
 
 	return (
 		<div className='space-y-6'>
-			<div className='flex items-center gap-4'>
-				<Button
-					onClick={() => navigate('/statues')}
-					size='icon'
-					variant='ghost'
-				>
-					<ArrowLeft className='size-5' />
-				</Button>
-				<h1 className='font-bold text-2xl'>
-					Riepilogo - {summary.name ?? 'Sommario'}
-				</h1>
-			</div>
+			<h1 className='font-bold text-2xl'>
+				Riepilogo - {summary.name ?? 'Sommario'}
+			</h1>
 
 			<div className='flex flex-wrap items-center gap-4'>
 				<Select onValueChange={setLanguage} value={selectedLanguage}>
