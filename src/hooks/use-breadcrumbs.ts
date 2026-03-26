@@ -11,10 +11,12 @@ function useBreadcrumbs(): BreadcrumbItem[] {
 	const { pathname } = useLocation()
 	const params = useParams()
 
-	// Get entity names for dynamic segments
 	const { data: site } = useSite(params.siteId ?? '')
 	const { data: statues } = useStatues()
 	const statue = statues?.find((s) => s.id === params.statueId)
+
+	// Resolve POI name from the site's pointsOfInterest
+	const poi = site?.pointsOfInterest?.find((p) => p.id === params.poiId)
 
 	const segments = pathname.split('/').filter(Boolean)
 	const crumbs: BreadcrumbItem[] = []
@@ -34,7 +36,7 @@ function useBreadcrumbs(): BreadcrumbItem[] {
 				crumbs.push({ label: 'Utenti' })
 				break
 			case 'poi':
-				crumbs.push({ label: 'POI' })
+				// Skip the literal "poi" segment - the poiId segment will show the POI name
 				break
 			case 'edit':
 				crumbs.push({ label: 'Modifica' })
@@ -46,13 +48,14 @@ function useBreadcrumbs(): BreadcrumbItem[] {
 				crumbs.push({ label: 'Riepilogo' })
 				break
 			default:
-				// Dynamic ID segments - try to resolve names
 				if (params.siteId === segment && site) {
 					crumbs.push({ label: site.name ?? 'Sito', href: path })
 				} else if (params.statueId === segment && statue) {
 					crumbs.push({ label: statue.name ?? 'Statua', href: path })
 				} else if (params.poiId === segment) {
-					crumbs.push({ label: 'POI' })
+					crumbs.push({
+						label: poi?.title ?? poi?.description ?? 'POI'
+					})
 				}
 				break
 		}
