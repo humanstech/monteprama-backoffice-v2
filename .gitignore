@@ -31,3 +31,6 @@ coverage/
 
 .env*
 !.env.example
+
+# Old Backoffice (Flutter Web)
+old_flutter_web_backoffice
