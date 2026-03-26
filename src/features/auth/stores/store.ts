@@ -1,35 +1,43 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { User } from '../types'
 
-// Auth store state interface - defines the shape of authentication data
 interface AuthStoreState {
 	accessToken?: string
 	refreshToken?: string
+	user?: User
 }
 
-// Auth store actions interface - defines available methods
 interface AuthStoreActions {
+	setAuth: (auth: {
+		accessToken: string
+		refreshToken: string
+		user?: User | null
+	}) => void
 	reset: () => void
 }
 
-// Create Zustand store with persist middleware for automatic localStorage synchronization
 export const useAuthStore = create<AuthStoreState & AuthStoreActions>()(
 	persist(
 		(set) => ({
-			// Initial state - tokens start as undefined
 			accessToken: undefined,
 			refreshToken: undefined,
-			// Reset action clears both tokens from store and localStorage
+			user: undefined,
+			setAuth: ({ accessToken, refreshToken, user }) =>
+				set({ accessToken, refreshToken, user: user ?? undefined }),
 			reset: () =>
-				set({ accessToken: undefined, refreshToken: undefined })
+				set({
+					accessToken: undefined,
+					refreshToken: undefined,
+					user: undefined
+				})
 		}),
 		{
-			// localStorage key for persisted data
 			name: 'auth-storage',
-			// Only persist specific fields to localStorage (eg. Exclude user object, if there will be any)
 			partialize: (state) => ({
 				accessToken: state.accessToken,
-				refreshToken: state.refreshToken
+				refreshToken: state.refreshToken,
+				user: state.user
 			})
 		}
 	)

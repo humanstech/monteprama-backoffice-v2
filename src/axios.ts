@@ -22,25 +22,19 @@ const axiosConfig = {
 const axiosInstance = axios.create(axiosConfig)
 
 const attemptRefresh = async (refreshToken: string) => {
-	const url = '/host-services/refresh'
 	try {
-		const {
-			data: { oauth2_authorization }
-		} = await axiosInstance.post(url, { refresh_token: refreshToken })
-
-		// Update Zustand store - localStorage is handled automatically by persist middleware
-		useAuthStore.setState(() => ({
-			accessToken: oauth2_authorization.access_token,
-			refreshToken: oauth2_authorization.refresh_token
-		}))
-
-		return { oauth2_authorization }
+		const { data } = await axiosInstance.post('/v1/auth/refresh', {
+			token: refreshToken
+		})
+		useAuthStore.getState().setAuth({
+			accessToken: data.accessToken,
+			refreshToken: data.refreshToken,
+			user: data.user
+		})
+		return data
 	} catch (error) {
 		if (axios.isAxiosError(error)) {
-			// Reset store - localStorage cleanup is handled automatically
 			useAuthStore.getState().reset()
-		} else {
-			console.error(error)
 		}
 	}
 }
@@ -65,7 +59,6 @@ axiosInstance.interceptors.response.use(
 		// get error info
 		const statusCode = error?.response?.status
 		const originalRequest = error.config
-		console.log('error', error)
 		switch (statusCode) {
 			case 401: {
 				// Get refresh token directly from store
