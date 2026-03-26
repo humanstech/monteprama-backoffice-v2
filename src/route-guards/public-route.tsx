@@ -2,7 +2,6 @@ import { Navigate, Outlet } from 'react-router'
 import { z } from 'zod'
 import { useAuthStore } from '@/features/auth/stores/store'
 import { useParsedSearchParams } from '@/hooks/use-parsed-search-params'
-import { routes } from '@/router'
 
 function PublicRoute() {
 	const { accessToken } = useAuthStore()
@@ -11,12 +10,7 @@ function PublicRoute() {
 	)
 
 	if (accessToken) {
-		return (
-			<Navigate
-				replace
-				to={searchParams.redirect ?? routes.home.handle.fullPath}
-			/>
-		)
+		return <Navigate replace to={searchParams.redirect ?? '/'} />
 	}
 	return <Outlet />
 }

@@ -1,6 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuthStore } from '@/features/auth/stores/store'
-import { routes } from '@/router'
 
 function PrivateRoute() {
 	const { accessToken } = useAuthStore()
@@ -11,7 +10,7 @@ function PrivateRoute() {
 			<Navigate
 				replace
 				to={{
-					pathname: routes.login.handle.fullPath,
+					pathname: '/login',
 					search: `redirect=${pathname}${search}`,
 					hash
 				}}
