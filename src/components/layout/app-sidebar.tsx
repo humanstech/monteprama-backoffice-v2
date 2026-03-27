@@ -36,7 +36,13 @@ function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 		<Sidebar {...props}>
 			<SidebarHeader>
 				<div className='flex h-16 items-center px-4'>
-					<span className='font-bold text-lg'>Mont'e Prama</span>
+					<img
+						alt="Mont'e Prama"
+						className='h-10 w-auto'
+						height={40}
+						src='/logo.png'
+						width={120}
+					/>
 				</div>
 			</SidebarHeader>
 			<SidebarContent>

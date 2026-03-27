@@ -48,7 +48,13 @@ function LoginPage() {
 		<div className='flex min-h-screen'>
 			<div className='flex flex-1 items-center justify-center'>
 				<div className='w-full max-w-[420px] space-y-10 px-5'>
-					<h1 className='font-bold text-3xl'>Mont'e Prama</h1>
+					<img
+						alt="Mont'e Prama"
+						className='h-16 w-auto'
+						height={64}
+						src='/login-logo.png'
+						width={200}
+					/>
 					<form
 						className='space-y-4'
 						onSubmit={handleSubmit(onSubmit)}
