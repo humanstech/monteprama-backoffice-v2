@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { sitesApi } from '@/features/sites/api'
+import { siteKeys } from '@/features/sites/hooks'
 import { poiApi } from './api'
 import type { ContentByLanguage, PoiContent } from './types'
 
@@ -139,6 +141,23 @@ export function useApprovePoiContent() {
 			poiApi.approve(siteId, poiId),
 		onSuccess: (_, { poiId }) =>
 			queryClient.invalidateQueries({ queryKey: poiKeys.contents(poiId) })
+	})
+}
+
+export function useUpdatePoiCoordinates(siteId: string) {
+	const queryClient = useQueryClient()
+	return useMutation({
+		mutationFn: ({
+			poiId,
+			lat,
+			lng
+		}: {
+			poiId: string
+			lat: number
+			lng: number
+		}) => sitesApi.updatePoiCoordinates(siteId, poiId, lng, lat),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: siteKeys.detail(siteId) })
 	})
 }
 

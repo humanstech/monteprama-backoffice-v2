@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
 	Select,
@@ -28,6 +29,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { LANGUAGES, type LanguageLabel } from '@/constants/languages'
 import { useSite } from '@/features/sites/hooks'
+import type { SitePoi } from '@/features/sites/types'
 import { raise } from '@/helpers/utils'
 import {
 	useApprovePoiContent,
@@ -37,6 +39,7 @@ import {
 	useTranslatePoiContent,
 	useTtsPoiContent,
 	useUpdatePoiContent,
+	useUpdatePoiCoordinates,
 	useVoices
 } from '../hooks'
 import { usePoiStore } from '../stores/poi-store'
@@ -181,28 +184,142 @@ function ContentItem({
 
 function StepTextAndMedia({
 	contents,
-	onSave
+	onSave,
+	poi,
+	siteId,
+	isBozza
 }: {
 	contents: PoiContent[]
 	onSave: (id: string, text: string) => void
+	poi?: SitePoi
+	siteId: string
+	isBozza: boolean
 }) {
-	if (contents.length === 0) {
-		return (
-			<p className='text-muted-foreground'>
-				Nessun contenuto per questa lingua.
-			</p>
+	// The "standard" content (non-summary) is the main text
+	const standardContent = contents.find(
+		(c) => c.type === 'standard' && c.isSummary === false
+	)
+	const [description, setDescription] = useState(
+		standardContent?.content ?? ''
+	)
+	const [lat, setLat] = useState(String(poi?.posY ?? ''))
+	const [lng, setLng] = useState(String(poi?.posX ?? ''))
+	const updateCoords = useUpdatePoiCoordinates(siteId)
+
+	const handleSaveCoordinates = () => {
+		if (!poi?.id) {
+			return
+		}
+		const latNum = Number.parseFloat(lat)
+		const lngNum = Number.parseFloat(lng)
+		if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+			toast.error('Latitudine e longitudine devono essere numeri validi')
+			return
+		}
+		updateCoords.mutate(
+			{ poiId: poi.id, lat: latNum, lng: lngNum },
+			{ onSuccess: () => toast.success('Coordinate aggiornate') }
 		)
 	}
 
 	return (
-		<div className='space-y-4'>
-			{contents.map((content) => (
-				<ContentItem
-					content={content}
-					key={content.id}
-					onSave={onSave}
-				/>
-			))}
+		<div className='space-y-6'>
+			{/* Cover + Testo generale */}
+			<div className='grid grid-cols-1 gap-6 lg:grid-cols-[2fr_5fr]'>
+				{/* Cover */}
+				<div className='space-y-2 rounded-lg border p-4'>
+					<h3 className='font-semibold'>Cover</h3>
+					<p className='text-muted-foreground text-xs'>
+						Immagine visualizzata come anteprima del sito
+					</p>
+					{poi?.cover?.url ? (
+						<img
+							alt='Cover'
+							className='h-[200px] w-full rounded-md object-cover'
+							height={200}
+							loading='lazy'
+							src={poi.cover.url}
+							width={300}
+						/>
+					) : (
+						<div className='flex h-[200px] items-center justify-center rounded-md border border-dashed bg-muted/50'>
+							<span className='text-muted-foreground text-sm'>
+								Nessuna immagine
+							</span>
+						</div>
+					)}
+				</div>
+
+				{/* Testo generale */}
+				<div className='space-y-2 rounded-lg border p-4'>
+					<div className='flex items-center justify-between'>
+						<h3 className='font-semibold'>Testo generale</h3>
+						{standardContent && (
+							<div className='flex items-center gap-2 text-xs'>
+								<JobBadge
+									label='Generazione'
+									status={standardContent.jobGenerationStatus}
+								/>
+							</div>
+						)}
+					</div>
+					<Textarea
+						onChange={(e) => setDescription(e.target.value)}
+						readOnly={!isBozza}
+						rows={8}
+						value={description}
+					/>
+					{isBozza && standardContent?.id && (
+						<Button
+							disabled={description === standardContent.content}
+							onClick={() =>
+								onSave(
+									standardContent.id as string,
+									description
+								)
+							}
+							size='sm'
+						>
+							Salva testo
+						</Button>
+					)}
+				</div>
+			</div>
+
+			{/* Latitudine e Longitudine */}
+			<div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+				<div className='space-y-2'>
+					<Label htmlFor='latitude'>Latitudine</Label>
+					<Input
+						id='latitude'
+						onChange={(e) => setLat(e.target.value)}
+						placeholder='es. 39.9333'
+						type='text'
+						value={lat}
+					/>
+				</div>
+				<div className='space-y-2'>
+					<Label htmlFor='longitude'>Longitudine</Label>
+					<Input
+						id='longitude'
+						onChange={(e) => setLng(e.target.value)}
+						placeholder='es. 8.4667'
+						type='text'
+						value={lng}
+					/>
+				</div>
+			</div>
+			{(lat !== String(poi?.posY ?? '') ||
+				lng !== String(poi?.posX ?? '')) && (
+				<Button
+					disabled={updateCoords.isPending}
+					onClick={handleSaveCoordinates}
+					size='sm'
+					variant='outline'
+				>
+					Salva coordinate
+				</Button>
+			)}
 		</div>
 	)
 }
@@ -735,7 +852,10 @@ function PoiDetailPage() {
 					{flowStep === 'textAndMedia' && (
 						<StepTextAndMedia
 							contents={contents}
+							isBozza={isBozza}
 							onSave={handleSave}
+							poi={poi}
+							siteId={sid}
 						/>
 					)}
 					{flowStep === 'generatedTexts' && (
