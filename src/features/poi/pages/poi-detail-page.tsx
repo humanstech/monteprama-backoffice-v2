@@ -34,13 +34,9 @@ import { raise } from '@/helpers/utils'
 import {
 	useApprovePoiContent,
 	useCloneToTemporary,
-	useGeneratePoiContent,
 	usePoiContents,
-	useTranslatePoiContent,
-	useTtsPoiContent,
 	useUpdatePoiContent,
-	useUpdatePoiCoordinates,
-	useVoices
+	useUpdatePoiCoordinates
 } from '../hooks'
 import { usePoiStore } from '../stores/poi-store'
 import type { FlowStep, PoiContent } from '../types'
@@ -85,101 +81,6 @@ function StepIndicator({
 
 function StepSeparator() {
 	return <div className='h-px w-10 bg-border' />
-}
-
-function ContentItem({
-	content,
-	onSave,
-	readOnly,
-	showAudio,
-	selectable,
-	selected,
-	onSelectChange
-}: {
-	content: PoiContent
-	onSave?: (id: string, text: string) => void
-	readOnly?: boolean
-	showAudio?: boolean
-	selectable?: boolean
-	selected?: boolean
-	onSelectChange?: (checked: boolean) => void
-}) {
-	const [text, setText] = useState(content.content ?? '')
-
-	const isJobRunning =
-		content.jobGenerationStatus === 'in_progress' ||
-		content.jobGenerationStatus === 'processing' ||
-		content.jobTranslationStatus === 'in_progress' ||
-		content.jobTranslationStatus === 'processing' ||
-		content.jobTtsStatus === 'in_progress' ||
-		content.jobTtsStatus === 'processing'
-
-	return (
-		<div className='space-y-3 rounded-lg border p-4'>
-			<div className='flex items-center justify-between'>
-				<div className='flex items-center gap-3'>
-					{selectable && content.id && (
-						<Checkbox
-							checked={selected}
-							onCheckedChange={onSelectChange}
-						/>
-					)}
-					<p className='font-medium text-sm'>
-						{content.name ?? content.type ?? 'Contenuto'}
-					</p>
-				</div>
-				<div className='flex items-center gap-2 text-xs'>
-					{isJobRunning && (
-						<Loader2 className='h-3 w-3 animate-spin' />
-					)}
-					<JobBadge
-						label='Generazione'
-						status={content.jobGenerationStatus}
-					/>
-					<JobBadge
-						label='Traduzione'
-						status={content.jobTranslationStatus}
-					/>
-					<JobBadge label='Audio' status={content.jobTtsStatus} />
-				</div>
-			</div>
-
-			{isJobRunning ? (
-				<div className='flex items-center gap-2 py-4 text-muted-foreground'>
-					<Loader2 className='h-4 w-4 animate-spin' />
-					<span className='text-sm'>Elaborazione in corso...</span>
-				</div>
-			) : (
-				<Textarea
-					onChange={(e) => setText(e.target.value)}
-					readOnly={readOnly}
-					rows={4}
-					value={text}
-				/>
-			)}
-
-			{!readOnly && onSave && content.id != null && (
-				<Button
-					disabled={text === content.content}
-					onClick={() => onSave(content.id as string, text)}
-					size='sm'
-				>
-					Salva
-				</Button>
-			)}
-
-			{showAudio && content.media?.url && (
-				<audio className='w-full' controls src={content.media.url}>
-					<track kind='captions' />
-				</audio>
-			)}
-			{showAudio && !content.media?.url && (
-				<p className='text-muted-foreground text-xs'>
-					Audio non ancora generato. Vai allo Step 3 per generare.
-				</p>
-			)}
-		</div>
-	)
 }
 
 function StepTextAndMedia({
@@ -324,114 +225,138 @@ function StepTextAndMedia({
 	)
 }
 
-function StepGeneratedTexts({
-	contents,
+function findContent(contents: PoiContent[], type: string, isSummary: boolean) {
+	return contents.find((c) => c.type === type && c.isSummary === isSummary)
+}
+
+const CONTENT_TYPES = [
+	{
+		label: 'Testo sintetico',
+		type: 'standard',
+		isSummary: true
+	},
+	{
+		label: 'Testo bambino',
+		type: 'kid',
+		isSummary: false
+	},
+	{
+		label: 'Testo bambino sintetico',
+		type: 'kid',
+		isSummary: true
+	}
+] as const
+
+const ALL_CONTENT_TYPES = [
+	{
+		label: 'Testo standard',
+		type: 'standard',
+		isSummary: false
+	},
+	...CONTENT_TYPES
+] as const
+
+function EditableContentBlock({
+	content,
+	label,
 	isBozza,
-	siteId,
-	poiId,
-	onSave
+	onSave,
+	checked,
+	onCheckedChange
 }: {
-	contents: PoiContent[]
+	content: PoiContent | undefined
+	label: string
 	isBozza: boolean
-	siteId: string
-	poiId: string
 	onSave: (id: string, text: string) => void
+	checked: boolean
+	onCheckedChange: (checked: boolean) => void
 }) {
-	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-	const generate = useGeneratePoiContent()
+	const [text, setText] = useState(content?.content ?? '')
+	const originalText = content?.content ?? ''
 
-	const toggleId = (id: string, checked: boolean) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev)
-			if (checked) {
-				next.add(id)
-			} else {
-				next.delete(id)
-			}
-			return next
-		})
-	}
+	const isJobRunning =
+		content?.jobGenerationStatus === 'in_progress' ||
+		content?.jobGenerationStatus === 'processing'
 
-	const handleGenerate = () => {
-		if (selectedIds.size === 0) {
-			toast.error('Seleziona almeno un contenuto da generare')
-			return
-		}
-		generate.mutate(
-			{
-				siteId,
-				poiId,
-				body: {
-					quoteMode: false,
-					sitePoiContentIds: [...selectedIds]
-				}
-			},
-			{
-				onSuccess: () => {
-					toast.success('Generazione avviata')
-					setSelectedIds(new Set())
-				},
-				onError: () => toast.error('Errore nella generazione')
-			}
-		)
-	}
-
-	if (contents.length === 0) {
-		return (
-			<p className='text-muted-foreground'>
-				Nessun contenuto per questa lingua.
-			</p>
-		)
+	if (!content) {
+		return null
 	}
 
 	return (
-		<div className='space-y-4'>
-			{contents.map((content) => (
-				<ContentItem
-					content={content}
-					key={content.id}
-					onSave={isBozza ? onSave : undefined}
-					onSelectChange={(checked) =>
-						toggleId(content.id ?? '', checked as boolean)
-					}
+		<div className='space-y-3 rounded-lg border p-4'>
+			<div className='flex items-center justify-between'>
+				<p className='font-semibold text-sm'>{label}</p>
+				<div className='flex items-center gap-2 text-xs'>
+					<JobBadge
+						label='Generazione'
+						status={content.jobGenerationStatus}
+					/>
+				</div>
+			</div>
+
+			{isJobRunning ? (
+				<div className='flex items-center gap-2 py-4 text-muted-foreground'>
+					<Loader2 className='h-4 w-4 animate-spin' />
+					<span className='text-sm'>Elaborazione in corso...</span>
+				</div>
+			) : (
+				<Textarea
+					onChange={(e) => setText(e.target.value)}
 					readOnly={!isBozza}
-					selectable={isBozza}
-					selected={selectedIds.has(content.id ?? '')}
+					rows={6}
+					value={text}
 				/>
-			))}
-			{isBozza && (
-				<Button
-					disabled={selectedIds.size === 0 || generate.isPending}
-					onClick={handleGenerate}
-				>
-					{generate.isPending && (
-						<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-					)}
-					Genera testi alternativi ({selectedIds.size})
-				</Button>
+			)}
+
+			{isBozza && content.id != null && (
+				<div className='flex items-center gap-2'>
+					<Button
+						disabled={text === originalText}
+						onClick={() => onSave(content.id as string, text)}
+						size='sm'
+					>
+						Salva
+					</Button>
+					<Button
+						disabled={text === originalText}
+						onClick={() => setText(originalText)}
+						size='sm'
+						variant='ghost'
+					>
+						Annulla
+					</Button>
+				</div>
+			)}
+
+			{isBozza && content.id != null && (
+				<div className='flex items-center gap-2 border-t pt-3'>
+					<Checkbox
+						checked={checked}
+						id={`check-${content.id}`}
+						onCheckedChange={(v) => onCheckedChange(v as boolean)}
+					/>
+					<Label
+						className='font-normal text-sm'
+						htmlFor={`check-${content.id}`}
+					>
+						Seleziona per la traduzione
+					</Label>
+				</div>
 			)}
 		</div>
 	)
 }
 
-function StepTranslations({
+function StepGeneratedTexts({
 	contents,
 	isBozza,
-	siteId,
-	poiId,
 	onSave
 }: {
 	contents: PoiContent[]
 	isBozza: boolean
-	siteId: string
-	poiId: string
 	onSave: (id: string, text: string) => void
 }) {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-	const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(
-		new Set()
-	)
-	const translate = useTranslatePoiContent()
 
 	const toggleId = (id: string, checked: boolean) => {
 		setSelectedIds((prev) => {
@@ -445,61 +370,7 @@ function StepTranslations({
 		})
 	}
 
-	const toggleLanguage = (lang: string, checked: boolean) => {
-		setSelectedLanguages((prev) => {
-			const next = new Set(prev)
-			if (checked) {
-				next.add(lang)
-			} else {
-				next.delete(lang)
-			}
-			return next
-		})
-	}
-
-	const selectAllContents = (checked: boolean) => {
-		if (checked) {
-			setSelectedIds(
-				new Set(
-					contents
-						.map((c) => c.id)
-						.filter((id): id is string => id != null)
-				)
-			)
-		} else {
-			setSelectedIds(new Set())
-		}
-	}
-
-	const handleTranslate = () => {
-		if (selectedIds.size === 0) {
-			toast.error('Seleziona almeno un contenuto da tradurre')
-			return
-		}
-		if (selectedLanguages.size === 0) {
-			toast.error('Seleziona almeno una lingua target')
-			return
-		}
-		translate.mutate(
-			{
-				siteId,
-				poiId,
-				body: {
-					quoteMode: false,
-					sitePoiContentIds: [...selectedIds],
-					languages: [...selectedLanguages]
-				}
-			},
-			{
-				onSuccess: () => {
-					toast.success('Traduzione avviata')
-					setSelectedIds(new Set())
-					setSelectedLanguages(new Set())
-				},
-				onError: () => toast.error('Errore nella traduzione')
-			}
-		)
-	}
+	const standardContent = findContent(contents, 'standard', false)
 
 	if (contents.length === 0) {
 		return (
@@ -511,93 +382,156 @@ function StepTranslations({
 
 	return (
 		<div className='space-y-6'>
-			<div className='space-y-4'>
-				{isBozza && (
-					<div className='flex items-center gap-2'>
-						<Checkbox
-							checked={
-								selectedIds.size === contents.length &&
-								contents.length > 0
-							}
-							onCheckedChange={selectAllContents}
+			{/* Descrizione principale - read only */}
+			<div className='space-y-2 rounded-lg border p-4'>
+				<h3 className='font-semibold'>Descrizione principale</h3>
+				{standardContent && (
+					<div className='flex items-center gap-2 text-xs'>
+						<JobBadge
+							label='Generazione'
+							status={standardContent.jobGenerationStatus}
 						/>
-						<Label className='text-sm'>
-							Seleziona tutti i contenuti
-						</Label>
 					</div>
 				)}
-				{contents.map((content) => (
-					<ContentItem
-						content={content}
-						key={content.id}
-						onSave={isBozza ? onSave : undefined}
-						onSelectChange={(checked) =>
-							toggleId(content.id ?? '', checked as boolean)
-						}
-						readOnly={!isBozza}
-						selectable={isBozza}
-						selected={selectedIds.has(content.id ?? '')}
-					/>
-				))}
+				<Textarea
+					readOnly
+					rows={4}
+					value={standardContent?.content ?? ''}
+				/>
 			</div>
 
-			{isBozza && (
-				<div className='space-y-3 rounded-lg border p-4'>
-					<p className='font-medium text-sm'>Lingue target</p>
-					<div className='grid grid-cols-3 gap-2'>
-						{Object.entries(LANGUAGES).map(([langLabel, code]) => (
-							<div className='flex items-center gap-2' key={code}>
-								<Checkbox
-									checked={selectedLanguages.has(code)}
-									id={`lang-${code}`}
-									onCheckedChange={(checked) =>
-										toggleLanguage(code, checked as boolean)
-									}
-								/>
-								<Label
-									className='font-normal text-sm'
-									htmlFor={`lang-${code}`}
-								>
-									{langLabel}
-								</Label>
-							</div>
-						))}
-					</div>
-					<Button
-						disabled={
-							selectedIds.size === 0 ||
-							selectedLanguages.size === 0 ||
-							translate.isPending
-						}
-						onClick={handleTranslate}
-					>
-						{translate.isPending && (
-							<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-						)}
-						Traduci ({selectedIds.size} contenuti in{' '}
-						{selectedLanguages.size} lingue)
-					</Button>
-				</div>
-			)}
+			{/* 3 editable content blocks in a grid */}
+			<div className='grid grid-cols-1 gap-6 lg:grid-cols-3'>
+				{CONTENT_TYPES.map((ct) => {
+					const content = findContent(contents, ct.type, ct.isSummary)
+					return (
+						<EditableContentBlock
+							checked={selectedIds.has(content?.id ?? '')}
+							content={content}
+							isBozza={isBozza}
+							key={ct.label}
+							label={ct.label}
+							onCheckedChange={(checked) =>
+								toggleId(content?.id ?? '', checked)
+							}
+							onSave={onSave}
+						/>
+					)
+				})}
+			</div>
 		</div>
 	)
 }
 
-function StepAudio({
+function TranslationRow({
+	label,
+	italianContent,
+	translatedContent,
+	isBozza,
+	onSave,
+	checked,
+	onCheckedChange
+}: {
+	label: string
+	italianContent: string
+	translatedContent: PoiContent | undefined
+	isBozza: boolean
+	onSave: (id: string, text: string) => void
+	checked: boolean
+	onCheckedChange: (checked: boolean) => void
+}) {
+	const [text, setText] = useState(translatedContent?.content ?? '')
+	const originalText = translatedContent?.content ?? ''
+
+	const isJobRunning =
+		translatedContent?.jobTranslationStatus === 'in_progress' ||
+		translatedContent?.jobTranslationStatus === 'processing'
+
+	return (
+		<div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
+			{/* Italian original - read only */}
+			<div className='space-y-2 rounded-lg border p-4'>
+				<p className='font-semibold text-sm'>{label}</p>
+				<Textarea readOnly rows={6} value={italianContent} />
+			</div>
+
+			{/* Translated - editable */}
+			<div className='space-y-2 rounded-lg border p-4'>
+				<div className='flex items-center justify-between'>
+					<p className='font-semibold text-sm'>{label}</p>
+					<div className='flex items-center gap-2 text-xs'>
+						{isJobRunning && (
+							<Loader2 className='h-3 w-3 animate-spin' />
+						)}
+						<JobBadge
+							label='Traduzione'
+							status={translatedContent?.jobTranslationStatus}
+						/>
+					</div>
+				</div>
+
+				{isJobRunning ? (
+					<div className='flex items-center gap-2 py-4 text-muted-foreground'>
+						<Loader2 className='h-4 w-4 animate-spin' />
+						<span className='text-sm'>Traduzione in corso...</span>
+					</div>
+				) : (
+					<Textarea
+						onChange={(e) => setText(e.target.value)}
+						readOnly={!isBozza}
+						rows={6}
+						value={text}
+					/>
+				)}
+
+				{isBozza && translatedContent?.id != null && (
+					<Button
+						disabled={text === originalText}
+						onClick={() =>
+							onSave(translatedContent.id as string, text)
+						}
+						size='sm'
+					>
+						Salva
+					</Button>
+				)}
+
+				{isBozza && translatedContent?.id != null && (
+					<div className='flex items-center gap-2 border-t pt-3'>
+						<Checkbox
+							checked={checked}
+							id={`tts-check-${translatedContent.id}`}
+							onCheckedChange={(v) =>
+								onCheckedChange(v as boolean)
+							}
+						/>
+						<Label
+							className='font-normal text-sm'
+							htmlFor={`tts-check-${translatedContent.id}`}
+						>
+							Pronto per le audioguide
+						</Label>
+					</div>
+				)}
+			</div>
+		</div>
+	)
+}
+
+function StepTranslations({
 	contents,
 	isBozza,
-	siteId,
-	poiId,
-	defaultVoice
+	onSave,
+	italianContents,
+	allIds
 }: {
 	contents: PoiContent[]
 	isBozza: boolean
-	siteId: string
-	poiId: string
-	defaultVoice?: { key: string; voiceId: string }
+	onSave: (id: string, text: string) => void
+	italianContents: PoiContent[]
+	allIds: string[]
 }) {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-	const tts = useTtsPoiContent()
 
 	const toggleId = (id: string, checked: boolean) => {
 		setSelectedIds((prev) => {
@@ -611,76 +545,264 @@ function StepAudio({
 		})
 	}
 
-	const handleTts = () => {
-		if (!defaultVoice) {
-			toast.error('Nessuna voce disponibile')
-			return
-		}
-		if (selectedIds.size === 0) {
-			toast.error('Seleziona almeno un contenuto')
-			return
-		}
-		tts.mutate(
-			{
-				siteId,
-				poiId,
-				body: {
-					quoteMode: false,
-					sitePoiContentIds: [...selectedIds],
-					voiceKeys: [defaultVoice.voiceId]
+	const contentIds = contents
+		.map((c) => c.id)
+		.filter((id): id is string => id != null)
+
+	const selectAllForLanguage = (checked: boolean) => {
+		if (checked) {
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				for (const id of contentIds) {
+					next.add(id)
 				}
-			},
-			{
-				onSuccess: () => {
-					toast.success('Generazione audio avviata')
-					setSelectedIds(new Set())
-				},
-				onError: () => toast.error('Errore nella generazione audio')
-			}
-		)
+				return next
+			})
+		} else {
+			setSelectedIds((prev) => {
+				const next = new Set(prev)
+				for (const id of contentIds) {
+					next.delete(id)
+				}
+				return next
+			})
+		}
 	}
+
+	const selectAllForAllLanguages = (checked: boolean) => {
+		if (checked) {
+			setSelectedIds(new Set(allIds))
+		} else {
+			setSelectedIds(new Set())
+		}
+	}
+
+	const hasAllContentTypes =
+		ALL_CONTENT_TYPES.every((ct) =>
+			findContent(contents, ct.type, ct.isSummary)
+		) && contents.length > 0
 
 	if (contents.length === 0) {
 		return (
-			<p className='text-muted-foreground'>
-				Nessun contenuto per questa lingua.
-			</p>
+			<div className='rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center'>
+				<p className='font-semibold text-destructive'>
+					Lingua non ancora tradotta!
+				</p>
+				<p className='mt-1 text-muted-foreground text-sm'>
+					Per tradurre questo contenuto vai allo Step 2 e seleziona la
+					lingua interessata
+				</p>
+			</div>
 		)
 	}
 
 	return (
-		<div className='space-y-4'>
-			{contents.map((content) => (
-				<ContentItem
-					content={content}
-					key={content.id}
-					onSelectChange={(checked) =>
-						toggleId(content.id ?? '', checked as boolean)
-					}
-					readOnly
-					selectable={isBozza}
-					selected={selectedIds.has(content.id ?? '')}
-					showAudio
-				/>
-			))}
-			{isBozza && defaultVoice && (
-				<div className='flex items-center gap-4'>
-					<Button
-						disabled={selectedIds.size === 0 || tts.isPending}
-						onClick={handleTts}
-					>
-						{tts.isPending && (
-							<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-						)}
-						Genera audio ({selectedIds.size})
-					</Button>
-					<p className='text-muted-foreground text-sm'>
-						Voce: {defaultVoice.key}
+		<div className='space-y-6'>
+			{/* Bulk checkboxes */}
+			{isBozza && hasAllContentTypes && (
+				<div className='flex flex-wrap items-center gap-6'>
+					<div className='flex items-center gap-2'>
+						<Checkbox
+							checked={contentIds.every((id) =>
+								selectedIds.has(id)
+							)}
+							id='select-all-lang'
+							onCheckedChange={(v) =>
+								selectAllForLanguage(v as boolean)
+							}
+						/>
+						<Label
+							className='font-normal text-sm'
+							htmlFor='select-all-lang'
+						>
+							Seleziona tutti i contenuti per la lingua
+							selezionata
+						</Label>
+					</div>
+
+					<div className='flex items-center gap-2'>
+						<Checkbox
+							checked={
+								allIds.length > 0 &&
+								allIds.every((id) => selectedIds.has(id))
+							}
+							id='select-all-all'
+							onCheckedChange={(v) =>
+								selectAllForAllLanguages(v as boolean)
+							}
+						/>
+						<Label
+							className='font-normal text-sm'
+							htmlFor='select-all-all'
+						>
+							Seleziona tutti i contenuti per ogni lingua
+						</Label>
+					</div>
+				</div>
+			)}
+
+			{/* Content rows: Italian vs translated side by side */}
+			{hasAllContentTypes ? (
+				<div className='space-y-6'>
+					{ALL_CONTENT_TYPES.map((ct) => {
+						const italianContent = findContent(
+							italianContents,
+							ct.type,
+							ct.isSummary
+						)
+						const translatedContent = findContent(
+							contents,
+							ct.type,
+							ct.isSummary
+						)
+						return (
+							<TranslationRow
+								checked={selectedIds.has(
+									translatedContent?.id ?? ''
+								)}
+								isBozza={isBozza}
+								italianContent={italianContent?.content ?? ''}
+								key={ct.label}
+								label={ct.label}
+								onCheckedChange={(checked) =>
+									toggleId(
+										translatedContent?.id ?? '',
+										checked
+									)
+								}
+								onSave={onSave}
+								translatedContent={translatedContent}
+							/>
+						)
+					})}
+				</div>
+			) : (
+				<div className='rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center'>
+					<p className='font-semibold text-destructive'>
+						Lingua non ancora tradotta!
+					</p>
+					<p className='mt-1 text-muted-foreground text-sm'>
+						Per tradurre questo contenuto vai allo Step 2 e
+						seleziona la lingua interessata
 					</p>
 				</div>
 			)}
 		</div>
 	)
+}
+
+function AudioContentBlock({
+	label,
+	content
+}: {
+	label: string
+	content: PoiContent
+}) {
+	const isTtsRunning =
+		content.jobTtsStatus === 'in_progress' ||
+		content.jobTtsStatus === 'processing'
+	const isTtsCompleted = content.jobTtsStatus === 'completed'
+	const hasAudio = isTtsCompleted && !!content.media?.url
+
+	return (
+		<div className='space-y-3 rounded-lg border p-4'>
+			<p className='font-semibold text-sm'>{label}</p>
+			<Textarea readOnly rows={4} value={content.content ?? ''} />
+
+			{isTtsRunning && (
+				<div className='flex items-center gap-2 py-3 text-muted-foreground'>
+					<Loader2 className='h-4 w-4 animate-spin' />
+					<span className='text-sm'>
+						Generazione audio in corso...
+					</span>
+				</div>
+			)}
+
+			{hasAudio && (
+				<audio
+					className='w-full'
+					controls
+					src={content.media?.url ?? undefined}
+				>
+					<track kind='captions' />
+				</audio>
+			)}
+
+			{!(isTtsRunning || hasAudio) && (
+				<p className='text-center text-destructive text-sm'>
+					Contenuto non ancora generato, vai allo STEP 3 per procedere
+					alla generazione
+				</p>
+			)}
+		</div>
+	)
+}
+
+function StepAudio({ contents }: { contents: PoiContent[] }) {
+	const hasAllContentTypes =
+		ALL_CONTENT_TYPES.every((ct) =>
+			findContent(contents, ct.type, ct.isSummary)
+		) && contents.length > 0
+
+	if (contents.length === 0) {
+		return (
+			<div className='rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center'>
+				<p className='font-semibold text-destructive'>
+					Lingua non ancora generata!
+				</p>
+				<p className='mt-1 text-muted-foreground text-sm'>
+					Per generare questo contenuto vai allo Step 3 e seleziona la
+					lingua interessata
+				</p>
+			</div>
+		)
+	}
+
+	if (!hasAllContentTypes) {
+		return (
+			<div className='rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center'>
+				<p className='font-semibold text-destructive'>
+					Lingua non ancora generata!
+				</p>
+				<p className='mt-1 text-muted-foreground text-sm'>
+					Per generare questo contenuto vai allo Step 3 e seleziona la
+					lingua interessata
+				</p>
+			</div>
+		)
+	}
+
+	return (
+		<div className='space-y-6'>
+			{ALL_CONTENT_TYPES.map((ct) => {
+				const content = findContent(contents, ct.type, ct.isSummary)
+				if (!content) {
+					return null
+				}
+				return (
+					<AudioContentBlock
+						content={content}
+						key={ct.label}
+						label={ct.label}
+					/>
+				)
+			})}
+		</div>
+	)
+}
+
+function getPoiName(poi: SitePoi | undefined): string {
+	if (poi?.title) {
+		return poi.title
+	}
+	if (poi?.description) {
+		return poi.description
+	}
+	const namedContent = poi?.sitePoiContent?.find((c) => c.name)
+	if (namedContent?.name) {
+		return namedContent.name
+	}
+	return `Punto di interesse ${poi?.step ?? ''}`
 }
 
 function PoiDetailPage() {
@@ -693,7 +815,6 @@ function PoiDetailPage() {
 
 	const { data: site } = useSite(sid)
 	const { data: poiData, isLoading } = usePoiContents(pid, polling)
-	const { data: voices } = useVoices()
 	const updateContent = useUpdatePoiContent(pid)
 	const cloneToTemp = useCloneToTemporary()
 	const approve = useApprovePoiContent()
@@ -708,11 +829,7 @@ function PoiDetailPage() {
 	} = usePoiStore()
 
 	const poi = site?.pointsOfInterest?.find((p) => p.id === pid)
-	const poiName =
-		poi?.title ??
-		poi?.description ??
-		poi?.sitePoiContent?.find((c) => c.name)?.name ??
-		`Punto di interesse ${poi?.step ?? ''}`
+	const poiName = getPoiName(poi)
 
 	if (isLoading) {
 		return <Skeleton className='h-[600px]' />
@@ -725,7 +842,12 @@ function PoiDetailPage() {
 	const hasTemporary = Object.keys(poiData.dataTemporary).length > 0
 	const activeData = isBozza ? poiData.dataTemporary : poiData.dataPermanent
 	const contents = activeData[langCode] ?? []
-	const defaultVoice = voices?.find((v) => v.isDefault)
+
+	// Italian contents for side-by-side comparison in translations step
+	const italianContents =
+		(isBozza
+			? poiData.dataTemporary['it-IT']
+			: poiData.dataPermanent['it-IT']) ?? []
 
 	const currentStepIndex = FLOW_STEPS.findIndex((s) => s.key === flowStep)
 	const isLastStep = currentStepIndex === FLOW_STEPS.length - 1
@@ -759,10 +881,11 @@ function PoiDetailPage() {
 	}
 
 	const handleNext = () => {
+		if (isLastStep && isBozza) {
+			setShowApproveDialog(true)
+			return
+		}
 		if (isLastStep) {
-			if (isBozza) {
-				setShowApproveDialog(true)
-			}
 			return
 		}
 		const nextStep = FLOW_STEPS[currentStepIndex + 1]
@@ -863,28 +986,18 @@ function PoiDetailPage() {
 							contents={contents}
 							isBozza={isBozza}
 							onSave={handleSave}
-							poiId={pid}
-							siteId={sid}
 						/>
 					)}
 					{flowStep === 'translations' && (
 						<StepTranslations
+							allIds={poiData.allIds}
 							contents={contents}
 							isBozza={isBozza}
+							italianContents={italianContents}
 							onSave={handleSave}
-							poiId={pid}
-							siteId={sid}
 						/>
 					)}
-					{flowStep === 'audio' && (
-						<StepAudio
-							contents={contents}
-							defaultVoice={defaultVoice}
-							isBozza={isBozza}
-							poiId={pid}
-							siteId={sid}
-						/>
-					)}
+					{flowStep === 'audio' && <StepAudio contents={contents} />}
 				</div>
 			</div>
 
