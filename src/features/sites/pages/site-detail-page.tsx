@@ -1,8 +1,23 @@
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+	closestCenter,
+	DndContext,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors
+} from '@dnd-kit/core'
+import {
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InfoSitesSection } from '@/features/info-sites/components/info-sites-section'
@@ -107,25 +122,100 @@ function GeneralSection({
 	)
 }
 
-function PoiListSection({ pois, siteId }: { pois: SitePoi[]; siteId: string }) {
+function SortablePoiItem({ poi, siteId }: { poi: SitePoi; siteId: string }) {
 	const navigate = useNavigate()
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging
+	} = useSortable({ id: poi.id ?? '' })
+
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.5 : 1
+	}
+
+	return (
+		<div
+			className='flex items-center gap-0 rounded-lg border bg-card transition-shadow hover:shadow-sm'
+			ref={setNodeRef}
+			style={style}
+		>
+			<button
+				className='flex shrink-0 cursor-grab items-center justify-center rounded-l-lg px-2 py-4 text-muted-foreground hover:text-foreground active:cursor-grabbing'
+				type='button'
+				{...attributes}
+				{...listeners}
+			>
+				<GripVertical className='size-5' />
+			</button>
+			<button
+				className='flex flex-1 items-center gap-4 p-4 pl-0 text-left transition-colors hover:bg-accent/50'
+				onClick={() => navigate(`/sites/${siteId}/poi/${poi.id}`)}
+				type='button'
+			>
+				<span className='flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground text-sm'>
+					{poi.step ?? '?'}
+				</span>
+				{poi.cover?.url && (
+					<img
+						alt=''
+						className='size-12 rounded-md object-cover'
+						height={48}
+						loading='lazy'
+						src={poi.cover.url}
+						width={48}
+					/>
+				)}
+				<div className='flex-1'>
+					<p className='font-medium'>
+						{poi.title ?? poi.description ?? 'POI senza nome'}
+					</p>
+					{poi.language && (
+						<p className='text-muted-foreground text-sm'>
+							{poi.language}
+						</p>
+					)}
+				</div>
+			</button>
+		</div>
+	)
+}
+
+function PoiListSection({ pois, siteId }: { pois: SitePoi[]; siteId: string }) {
 	const reorder = useReorderPois(siteId)
 	const [localPois, setLocalPois] = useState<SitePoi[] | null>(null)
 
 	const displayPois = localPois ?? pois
+	const poiIds = displayPois.map((p) => p.id ?? '')
 
-	const swap = (index: number, direction: 'up' | 'down') => {
-		const targetIndex = direction === 'up' ? index - 1 : index + 1
-		if (targetIndex < 0 || targetIndex >= displayPois.length) {
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates
+		})
+	)
+
+	const handleDragEnd = (event: DragEndEvent) => {
+		const { active, over } = event
+		if (!over || active.id === over.id) {
+			return
+		}
+
+		const oldIndex = displayPois.findIndex((p) => p.id === active.id)
+		const newIndex = displayPois.findIndex((p) => p.id === over.id)
+		if (oldIndex === -1 || newIndex === -1) {
 			return
 		}
 
 		const reordered = [...displayPois]
-		const temp = reordered[index]
-		reordered[index] = reordered[targetIndex]
-		reordered[targetIndex] = temp
+		const [moved] = reordered.splice(oldIndex, 1)
+		reordered.splice(newIndex, 0, moved)
 
-		// Assign new step values (1-based)
 		const withSteps = reordered.map((poi, i) => ({
 			...poi,
 			step: i + 1
@@ -133,7 +223,6 @@ function PoiListSection({ pois, siteId }: { pois: SitePoi[]; siteId: string }) {
 
 		setLocalPois(withSteps)
 
-		// Persist to backend
 		const updates = withSteps
 			.filter(
 				(p): p is SitePoi & { id: string; step: number } =>
@@ -158,68 +247,26 @@ function PoiListSection({ pois, siteId }: { pois: SitePoi[]; siteId: string }) {
 			<h2 className='font-semibold text-lg'>
 				Punti di interesse ({displayPois.length})
 			</h2>
-			<div className='space-y-2'>
-				{displayPois.map((poi, index) => (
-					<div className='flex items-center gap-2' key={poi.id}>
-						<div className='flex flex-col gap-1'>
-							<Button
-								className='size-7'
-								disabled={index === 0 || reorder.isPending}
-								onClick={() => swap(index, 'up')}
-								size='icon'
-								variant='ghost'
-							>
-								<ArrowUp className='size-4' />
-							</Button>
-							<Button
-								className='size-7'
-								disabled={
-									index === displayPois.length - 1 ||
-									reorder.isPending
-								}
-								onClick={() => swap(index, 'down')}
-								size='icon'
-								variant='ghost'
-							>
-								<ArrowDown className='size-4' />
-							</Button>
-						</div>
-						<button
-							className='flex flex-1 items-center gap-4 rounded-lg border p-4 text-left transition-colors hover:bg-accent'
-							onClick={() =>
-								navigate(`/sites/${siteId}/poi/${poi.id}`)
-							}
-							type='button'
-						>
-							<span className='flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground text-sm'>
-								{poi.step ?? '?'}
-							</span>
-							{poi.cover?.url && (
-								<img
-									alt=''
-									className='size-12 rounded-md object-cover'
-									height={48}
-									loading='lazy'
-									src={poi.cover.url}
-									width={48}
-								/>
-							)}
-							<div className='flex-1'>
-								<p className='font-medium'>
-									{poi.title ??
-										poi.description ??
-										'POI senza nome'}
-								</p>
-								{poi.language && (
-									<p className='text-muted-foreground text-sm'>
-										{poi.language}
-									</p>
-								)}
-							</div>
-						</button>
+			<DndContext
+				collisionDetection={closestCenter}
+				onDragEnd={handleDragEnd}
+				sensors={sensors}
+			>
+				<SortableContext
+					items={poiIds}
+					strategy={verticalListSortingStrategy}
+				>
+					<div className='space-y-2'>
+						{displayPois.map((poi) => (
+							<SortablePoiItem
+								key={poi.id}
+								poi={poi}
+								siteId={siteId}
+							/>
+						))}
 					</div>
-				))}
-			</div>
+				</SortableContext>
+			</DndContext>
 		</div>
 	)
 }
