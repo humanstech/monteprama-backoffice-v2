@@ -63,22 +63,22 @@ function StepIndicator({
 }) {
 	return (
 		<button
-			className={`flex items-center gap-2 rounded-lg px-3 py-2 transition-colors ${
+			className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 transition-all ${
 				isActive
-					? 'border border-primary text-primary'
-					: 'text-muted-foreground hover:text-foreground'
+					? 'border-primary bg-primary/10 text-primary shadow-sm'
+					: 'border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground'
 			}`}
 			onClick={onClick}
 			type='button'
 		>
 			<span
 				className={`flex h-7 w-7 items-center justify-center rounded-md font-medium text-sm text-white ${
-					isActive ? 'bg-primary' : 'bg-primary/40'
+					isActive ? 'bg-primary' : 'bg-muted-foreground/50'
 				}`}
 			>
 				{step.number}
 			</span>
-			<span className='font-semibold text-sm'>{step.label}</span>
+			<span className='font-medium text-sm'>{step.label}</span>
 		</button>
 	)
 }
