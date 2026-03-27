@@ -7,16 +7,54 @@ interface BreadcrumbItem {
 	href?: string
 }
 
+const STATIC_SEGMENTS: Record<string, BreadcrumbItem | null> = {
+	sites: { label: 'Siti archeologici', href: '/sites' },
+	statues: { label: 'Statue', href: '/statues' },
+	users: { label: 'Utenti' },
+	poi: null, // skip - poiId segment shows the name
+	content: { label: 'Contenuti' }
+}
+
+function resolveDynamicSegment(
+	segment: string,
+	path: string,
+	params: Record<string, string | undefined>,
+	entities: {
+		siteName?: string | null
+		statueName?: string | null
+		poiName?: string | null
+	}
+): BreadcrumbItem | null {
+	if (params.siteId === segment) {
+		return { label: entities.siteName ?? 'Sito', href: path }
+	}
+	if (params.statueId === segment) {
+		return {
+			label: entities.statueName ?? 'Statua',
+			href: `/statues/${segment}/edit`
+		}
+	}
+	if (params.poiId === segment) {
+		return { label: entities.poiName ?? 'POI' }
+	}
+	return null
+}
+
 function useBreadcrumbs(): BreadcrumbItem[] {
-	const { pathname } = useLocation()
+	const location = useLocation()
+	const { pathname } = location
 	const params = useParams()
 
 	const { data: site } = useSite(params.siteId ?? '')
 	const { data: statues } = useStatues()
 	const statue = statues?.find((s) => s.id === params.statueId)
-
-	// Resolve POI name from the site's pointsOfInterest
 	const poi = site?.pointsOfInterest?.find((p) => p.id === params.poiId)
+
+	const entities = {
+		siteName: site?.name,
+		statueName: statue?.name,
+		poiName: poi?.title ?? poi?.description
+	}
 
 	const segments = pathname.split('/').filter(Boolean)
 	const crumbs: BreadcrumbItem[] = []
@@ -25,39 +63,27 @@ function useBreadcrumbs(): BreadcrumbItem[] {
 		const segment = segments[i]
 		const path = `/${segments.slice(0, i + 1).join('/')}`
 
-		switch (segment) {
-			case 'sites':
-				crumbs.push({ label: 'Siti archeologici', href: '/sites' })
-				break
-			case 'statues':
-				crumbs.push({ label: 'Statue', href: '/statues' })
-				break
-			case 'users':
-				crumbs.push({ label: 'Utenti' })
-				break
-			case 'poi':
-				// Skip the literal "poi" segment - the poiId segment will show the POI name
-				break
-			case 'edit':
-				crumbs.push({ label: 'Modifica' })
-				break
-			case 'content':
-				crumbs.push({ label: 'Contenuti' })
-				break
-			case 'summary':
-				crumbs.push({ label: 'Riepilogo' })
-				break
-			default:
-				if (params.siteId === segment && site) {
-					crumbs.push({ label: site.name ?? 'Sito', href: path })
-				} else if (params.statueId === segment && statue) {
-					crumbs.push({ label: statue.name ?? 'Statua', href: path })
-				} else if (params.poiId === segment) {
-					crumbs.push({
-						label: poi?.title ?? poi?.description ?? 'POI'
-					})
-				}
-				break
+		if (segment in STATIC_SEGMENTS) {
+			const crumb = STATIC_SEGMENTS[segment]
+			if (crumb) {
+				crumbs.push(crumb)
+			}
+			continue
+		}
+
+		if (segment === 'edit' && !params.statueId) {
+			crumbs.push({ label: 'Modifica' })
+			continue
+		}
+
+		if (segment === 'summary') {
+			crumbs.push({ label: 'Riepilogo' })
+			continue
+		}
+
+		const dynamic = resolveDynamicSegment(segment, path, params, entities)
+		if (dynamic) {
+			crumbs.push(dynamic)
 		}
 	}
 
