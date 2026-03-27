@@ -7,8 +7,7 @@ import {
 	SidebarHeader,
 	SidebarMenu,
 	SidebarMenuButton,
-	SidebarMenuItem,
-	SidebarRail
+	SidebarMenuItem
 } from '@/components/ui/sidebar'
 import { authApi } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth/stores/store'
@@ -35,13 +34,13 @@ function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 	return (
 		<Sidebar {...props}>
 			<SidebarHeader>
-				<div className='flex h-16 items-center px-4'>
+				<div className='flex items-center justify-center px-4 py-6'>
 					<img
 						alt="Mont'e Prama"
-						className='h-10 w-auto'
-						height={40}
+						className='h-16 w-auto'
+						height={64}
 						src='/logo.png'
-						width={120}
+						width={180}
 					/>
 				</div>
 			</SidebarHeader>
@@ -74,7 +73,6 @@ function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarFooter>
-			<SidebarRail />
 		</Sidebar>
 	)
 }

@@ -148,6 +148,7 @@
 	--sidebar-border: #2a3a4d;
 	--sidebar-ring: #3bd460;
 	--sidebar: #0f1419;
+	--sidebar-right-border: #fdfaf1;
 	--overlay: rgba(0, 0, 0, 0.5);
 }
 
@@ -214,6 +215,10 @@
 
 	body {
 		@apply bg-background text-foreground;
+	}
+
+	.dark [data-slot="sidebar-inner"] {
+		box-shadow: inset -1px 0 0 0 var(--sidebar-right-border);
 	}
 }
 

@@ -30,6 +30,7 @@ const SummaryEditPage = lazy(
 	() => import('@/features/statues/pages/summary-edit-page')
 )
 const UsersPage = lazy(() => import('@/features/users/pages/users-page'))
+const NotFoundPage = lazy(() => import('@/pages/not-found-page'))
 
 function LazyPage({ children }: { children: React.ReactNode }) {
 	return (
@@ -132,9 +133,24 @@ export const router = createBrowserRouter(
 						}
 						path='users'
 					/>
+					<Route
+						element={
+							<LazyPage>
+								<NotFoundPage />
+							</LazyPage>
+						}
+						path='*'
+					/>
 				</Route>
 			</Route>
-			<Route element={<h1>Pagina non trovata</h1>} path='*' />
+			<Route
+				element={
+					<LazyPage>
+						<NotFoundPage />
+					</LazyPage>
+				}
+				path='*'
+			/>
 		</Route>
 	)
 )

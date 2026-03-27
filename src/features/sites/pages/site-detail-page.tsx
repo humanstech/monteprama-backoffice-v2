@@ -14,16 +14,35 @@ import {
 	verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
-import { useState } from 'react'
+import { GripVertical, ImagePlus, Loader2, Trash2, Upload } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InfoSitesSection } from '@/features/info-sites/components/info-sites-section'
+import type { Media } from '@/features/media/types'
 import { TicketsSection } from '@/features/tickets/components/tickets-section'
 import { raise } from '@/helpers/utils'
-import { useReorderPois, useSite } from '../hooks'
+import {
+	useDeleteSiteCover,
+	useRemoveSiteMedia,
+	useReorderPois,
+	useSite,
+	useUploadSiteCover,
+	useUploadSiteGallery
+} from '../hooks'
 import type { SitePoi } from '../types'
 
 function SiteDetailPage() {
@@ -55,7 +74,7 @@ function SiteDetailPage() {
 				</TabsList>
 
 				<TabsContent className='mt-6' value='general'>
-					<GeneralSection site={site} />
+					<GeneralSection site={site} siteId={siteId ?? ''} />
 				</TabsContent>
 
 				<TabsContent className='mt-6' value='poi'>
@@ -74,50 +93,306 @@ function SiteDetailPage() {
 	)
 }
 
+const IMAGE_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp'
+
+function DropZone({
+	onFiles,
+	isPending,
+	multiple,
+	label
+}: {
+	onFiles: (files: File[]) => void
+	isPending: boolean
+	multiple?: boolean
+	label: string
+}) {
+	const inputRef = useRef<HTMLInputElement>(null)
+	const [isDragOver, setIsDragOver] = useState(false)
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault()
+			setIsDragOver(false)
+			const files = [...e.dataTransfer.files].filter((f) =>
+				f.type.startsWith('image/')
+			)
+			if (files.length > 0) {
+				onFiles(multiple ? files : [files[0]])
+			}
+		},
+		[onFiles, multiple]
+	)
+
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = e.target.files ? [...e.target.files] : []
+		if (files.length > 0) {
+			onFiles(files)
+		}
+		if (inputRef.current) {
+			inputRef.current.value = ''
+		}
+	}
+
+	return (
+		<button
+			className={`flex min-h-[120px] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors ${
+				isDragOver
+					? 'border-primary bg-primary/5'
+					: 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
+			}`}
+			disabled={isPending}
+			onClick={() => inputRef.current?.click()}
+			onDragLeave={() => setIsDragOver(false)}
+			onDragOver={(e) => {
+				e.preventDefault()
+				setIsDragOver(true)
+			}}
+			onDrop={handleDrop}
+			type='button'
+		>
+			{isPending ? (
+				<Loader2 className='size-8 animate-spin text-muted-foreground' />
+			) : (
+				<Upload className='size-8 text-muted-foreground' />
+			)}
+			<span className='text-muted-foreground text-sm'>
+				{isPending ? 'Caricamento...' : label}
+			</span>
+			<input
+				accept={IMAGE_ACCEPT}
+				className='hidden'
+				multiple={multiple}
+				onChange={handleChange}
+				ref={inputRef}
+				type='file'
+			/>
+		</button>
+	)
+}
+
+function ImagePreview({
+	src,
+	alt,
+	onDelete,
+	onReplace,
+	isDeleting
+}: {
+	src: string
+	alt: string
+	onDelete?: () => void
+	onReplace?: (file: File) => void
+	isDeleting?: boolean
+}) {
+	const replaceInputRef = useRef<HTMLInputElement>(null)
+
+	return (
+		<div className='group relative overflow-hidden rounded-lg'>
+			<img
+				alt={alt}
+				className='h-full w-full object-cover'
+				height={300}
+				loading='lazy'
+				src={src}
+				width={300}
+			/>
+			<div className='absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100'>
+				{onReplace && (
+					<>
+						<Button
+							onClick={() => replaceInputRef.current?.click()}
+							size='icon'
+							variant='secondary'
+						>
+							<ImagePlus className='size-4' />
+						</Button>
+						<input
+							accept={IMAGE_ACCEPT}
+							className='hidden'
+							onChange={(e) => {
+								const file = e.target.files?.[0]
+								if (file) {
+									onReplace(file)
+								}
+							}}
+							ref={replaceInputRef}
+							type='file'
+						/>
+					</>
+				)}
+				{onDelete && (
+					<Button
+						disabled={isDeleting}
+						onClick={onDelete}
+						size='icon'
+						variant='destructive'
+					>
+						{isDeleting ? (
+							<Loader2 className='size-4 animate-spin' />
+						) : (
+							<Trash2 className='size-4' />
+						)}
+					</Button>
+				)}
+			</div>
+		</div>
+	)
+}
+
 function GeneralSection({
-	site
+	site,
+	siteId
 }: {
 	site: NonNullable<ReturnType<typeof useSite>['data']>
+	siteId: string
 }) {
+	const uploadCover = useUploadSiteCover(siteId)
+	const deleteCover = useDeleteSiteCover(siteId)
+	const uploadGallery = useUploadSiteGallery(siteId)
+	const removeMedia = useRemoveSiteMedia(siteId)
+	const [mediaToDelete, setMediaToDelete] = useState<Media | null>(null)
+
+	const existingMediaIds = (site.medias ?? [])
+		.map((m) => m.id)
+		.filter((id): id is string => id != null)
+
+	const handleUploadCover = (files: File[]) => {
+		uploadCover.mutate(files, {
+			onSuccess: () => toast.success('Cover aggiornata'),
+			onError: () => toast.error('Errore nel caricamento della cover')
+		})
+	}
+
+	const handleDeleteCover = () => {
+		deleteCover.mutate(undefined, {
+			onSuccess: () => toast.success('Cover rimossa'),
+			onError: () => toast.error('Errore nella rimozione della cover')
+		})
+	}
+
+	const handleReplaceCover = (file: File) => {
+		uploadCover.mutate([file], {
+			onSuccess: () => toast.success('Cover sostituita'),
+			onError: () => toast.error('Errore nella sostituzione della cover')
+		})
+	}
+
+	const handleUploadGallery = (files: File[]) => {
+		uploadGallery.mutate(
+			{ files, existingMediaIds },
+			{
+				onSuccess: () =>
+					toast.success(
+						`${files.length} ${files.length === 1 ? 'immagine aggiunta' : 'immagini aggiunte'}`
+					),
+				onError: () =>
+					toast.error('Errore nel caricamento delle immagini')
+			}
+		)
+	}
+
+	const handleRemoveMedia = () => {
+		if (!mediaToDelete) {
+			return
+		}
+		removeMedia.mutate(
+			{
+				mediaIdToRemove: mediaToDelete.id,
+				currentMediaIds: existingMediaIds
+			},
+			{
+				onSuccess: () => {
+					toast.success('Immagine rimossa dalla galleria')
+					setMediaToDelete(null)
+				},
+				onError: () =>
+					toast.error("Errore nella rimozione dell'immagine")
+			}
+		)
+	}
+
 	return (
-		<div className='space-y-6'>
-			<div className='grid gap-6 lg:grid-cols-2'>
-				<div className='space-y-4'>
-					<h2 className='font-semibold text-lg'>Cover</h2>
-					{site.cover?.url ? (
-						<img
-							alt={site.name ?? ''}
-							className='max-h-[300px] w-auto rounded-lg object-cover'
-							height={300}
-							loading='lazy'
+		<div className='space-y-8'>
+			{/* Cover */}
+			<div className='space-y-4'>
+				<h2 className='font-semibold text-lg'>Cover</h2>
+				{site.cover?.url ? (
+					<div className='max-w-md'>
+						<ImagePreview
+							alt={site.name ?? 'Cover'}
+							isDeleting={deleteCover.isPending}
+							onDelete={handleDeleteCover}
+							onReplace={handleReplaceCover}
 							src={site.cover.url}
-							width={400}
 						/>
-					) : (
-						<div className='flex h-[200px] items-center justify-center rounded-lg bg-muted'>
-							<span className='text-muted-foreground'>
-								Nessuna cover
-							</span>
-						</div>
-					)}
-				</div>
-				<div className='space-y-4'>
-					<h2 className='font-semibold text-lg'>Galleria</h2>
-					<div className='grid grid-cols-3 gap-2'>
-						{site.medias?.map((media) => (
-							<img
+					</div>
+				) : (
+					<div className='max-w-md'>
+						<DropZone
+							isPending={uploadCover.isPending}
+							label='Trascina o clicca per caricare la cover'
+							onFiles={handleUploadCover}
+						/>
+					</div>
+				)}
+			</div>
+
+			{/* Gallery */}
+			<div className='space-y-4'>
+				<h2 className='font-semibold text-lg'>
+					Galleria ({site.medias?.length ?? 0})
+				</h2>
+				<div className='grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4'>
+					{site.medias?.map((media) => (
+						<div className='aspect-square' key={media.id}>
+							<ImagePreview
 								alt={media.filename ?? ''}
-								className='h-24 w-full rounded-md object-cover'
-								height={96}
-								key={media.id}
-								loading='lazy'
+								onDelete={() => setMediaToDelete(media)}
 								src={media.url ?? ''}
-								width={96}
 							/>
-						))}
+						</div>
+					))}
+					<div className='aspect-square'>
+						<DropZone
+							isPending={uploadGallery.isPending}
+							label='Aggiungi immagini'
+							multiple
+							onFiles={handleUploadGallery}
+						/>
 					</div>
 				</div>
 			</div>
+
+			{/* Delete media confirmation */}
+			<AlertDialog
+				onOpenChange={(open) => {
+					if (!open) {
+						setMediaToDelete(null)
+					}
+				}}
+				open={mediaToDelete != null}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Rimuovi immagine</AlertDialogTitle>
+						<AlertDialogDescription>
+							Sei sicuro di voler rimuovere questa immagine dalla
+							galleria?
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Annulla</AlertDialogCancel>
+						<AlertDialogAction
+							disabled={removeMedia.isPending}
+							onClick={handleRemoveMedia}
+						>
+							{removeMedia.isPending && (
+								<Loader2 className='mr-2 size-4 animate-spin' />
+							)}
+							Rimuovi
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	)
 }

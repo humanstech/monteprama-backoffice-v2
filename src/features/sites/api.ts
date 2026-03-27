@@ -4,7 +4,7 @@ import type { Site } from './types'
 export const sitesApi = {
 	getAll: async () => {
 		const { data } = await axios.get<{ data: Site[] }>('/v2/sites', {
-			params: { responseType: 'micro' }
+			params: { responseType: 'extended' }
 		})
 		return data.data
 	},

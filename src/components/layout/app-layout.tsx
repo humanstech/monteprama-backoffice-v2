@@ -5,13 +5,13 @@ import { AppSidebar } from './app-sidebar'
 
 function AppLayout() {
 	return (
-		<SidebarProvider>
+		<SidebarProvider className='h-svh overflow-hidden'>
 			<AppSidebar />
 			<SidebarInset>
 				<AppHeader />
-				<main className='flex min-h-0 flex-1 flex-col overflow-y-auto p-6'>
+				<div className='flex min-h-0 flex-1 flex-col overflow-y-auto p-6'>
 					<Outlet />
-				</main>
+				</div>
 			</SidebarInset>
 		</SidebarProvider>
 	)

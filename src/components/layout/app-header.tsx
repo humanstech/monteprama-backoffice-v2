@@ -11,7 +11,6 @@ import {
 	BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useBreadcrumbs } from '@/hooks/use-breadcrumbs'
 
@@ -39,7 +38,6 @@ function AppHeader() {
 	return (
 		<header className='flex h-16 shrink-0 items-center gap-4 border-b px-4'>
 			<SidebarTrigger />
-			<Separator className='h-6' orientation='vertical' />
 			<Breadcrumb className='flex-1'>
 				<BreadcrumbList>
 					{breadcrumbs.map((crumb, index) => (

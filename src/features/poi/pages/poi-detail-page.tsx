@@ -682,8 +682,8 @@ function PoiDetailPage() {
 	}
 
 	return (
-		<div className='flex min-h-[calc(100vh-8rem)] flex-col'>
-			<div className='flex-1 space-y-6'>
+		<div className='flex h-full flex-col'>
+			<div className='min-h-0 flex-1 space-y-6 overflow-y-auto'>
 				<h1 className='font-bold text-2xl'>
 					Modifica &quot;{poiName}&quot;
 				</h1>
@@ -769,7 +769,7 @@ function PoiDetailPage() {
 			</div>
 
 			{/* Bottom stepper bar */}
-			<div className='sticky bottom-0 mt-8 border-t bg-background py-4'>
+			<div className='-mx-6 border-t bg-background px-6 py-4'>
 				<div className='flex items-center justify-between'>
 					<Button
 						disabled={isFirstStep}

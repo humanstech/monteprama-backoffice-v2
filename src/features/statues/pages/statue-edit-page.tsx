@@ -77,7 +77,11 @@ function StatueEditPage() {
 						contenuti
 					</p>
 					<Button
-						onClick={() => navigate('/statues/summary')}
+						onClick={() =>
+							navigate('/statues/summary', {
+								state: { fromStatueName: statue.name }
+							})
+						}
 						variant='outline'
 					>
 						Modifica riepilogo
