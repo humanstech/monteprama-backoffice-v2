@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
+import { JobBadge } from '@/components/job-badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -161,16 +162,16 @@ function ContentBlock({
 				<p className='font-medium text-sm'>
 					{content.name ?? content.type ?? 'Contenuto'}
 				</p>
-				<div className='flex gap-2 text-muted-foreground text-xs'>
-					{content.jobGenerationStatus && (
-						<span>Gen: {content.jobGenerationStatus}</span>
-					)}
-					{content.jobTranslationStatus && (
-						<span>Trad: {content.jobTranslationStatus}</span>
-					)}
-					{content.jobTtsStatus && (
-						<span>TTS: {content.jobTtsStatus}</span>
-					)}
+				<div className='flex gap-2 text-xs'>
+					<JobBadge
+						label='Generazione'
+						status={content.jobGenerationStatus}
+					/>
+					<JobBadge
+						label='Traduzione'
+						status={content.jobTranslationStatus}
+					/>
+					<JobBadge label='Audio' status={content.jobTtsStatus} />
 				</div>
 			</div>
 			<Textarea
